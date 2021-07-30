@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Dispatch, SetStateAction, useRef, useState } from 'react';
 import {
   FlatList,
   Image,
@@ -6,7 +6,7 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatListProps,
+  TextInput,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 
@@ -17,20 +17,57 @@ import trashIcon from '../assets/icons/trash/trash.png';
 export interface Task {
   id: number;
   title: string;
+  edit: boolean;
   done: boolean;
 }
 
 interface TasksListProps {
   tasks: Task[];
+  setTasks: Dispatch<SetStateAction<Task[]>>;
+  editTask: (id: number) => void;
   toggleTaskDone: (id: number) => void;
   removeTask: (id: number) => void;
 }
 
 export function TasksList({
   tasks,
+  setTasks,
+  editTask,
   toggleTaskDone,
   removeTask,
 }: TasksListProps) {
+  const [selectedTaskId, setSelectedtaskId] = useState<Number | null>(null);
+  const [editedTask, setEditedTask] = useState('');
+  const inputRef = useRef<TextInput>(null);
+
+  function startEdittingTask({ id, title }: Task) {
+    editTask(id);
+    setSelectedtaskId(id);
+    setEditedTask(title);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
+  }
+
+  function doneEdittingTask() {
+    const updatedTasks = tasks.map((task) => {
+      if (task.id === selectedTaskId) {
+        return {
+          ...task,
+          title: editedTask,
+          edit: false,
+        };
+      } else return task;
+    });
+
+    setTasks(updatedTasks);
+  }
+
+  function cancelEdditingTask(id: number) {
+    editTask(id);
+    setSelectedtaskId(null);
+  }
+
   return (
     <FlatList
       data={tasks}
@@ -40,39 +77,68 @@ export function TasksList({
       renderItem={({ item, index }) => {
         return (
           <ItemWrapper index={index}>
-            <View>
-              <TouchableOpacity
-                testID={`button-${index}`}
-                activeOpacity={0.7}
-                style={styles.taskButton}
-                onPress={() => toggleTaskDone(item.id)}
-                //TODO - use onPress (toggle task) prop
-              >
-                <View
-                  testID={`marker-${index}`}
-                  style={item.done ? styles.taskMarkerDone : styles.taskMarker}
-                  //TODO - use style prop
-                >
-                  {item.done && <Icon name="check" size={12} color="#FFF" />}
+            {!item.edit ? (
+              <>
+                <View style={{ flex: 1 }}>
+                  <TouchableOpacity
+                    testID={`button-${index}`}
+                    activeOpacity={0.7}
+                    style={styles.taskButton}
+                    onPress={() => toggleTaskDone(item.id)}
+                  >
+                    <View
+                      testID={`marker-${index}`}
+                      style={
+                        item.done ? styles.taskMarkerDone : styles.taskMarker
+                      }
+                    >
+                      {item.done && (
+                        <Icon name="check" size={12} color="#FFF" />
+                      )}
+                    </View>
+
+                    <Text
+                      style={item.done ? styles.taskTextDone : styles.taskText}
+                    >
+                      {item.title}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
 
-                <Text
-                  //TODO - use style prop
-                  style={item.done ? styles.taskTextDone : styles.taskText}
+                <TouchableOpacity
+                  testID={`edit-${index}`}
+                  style={{ paddingHorizontal: 24 }}
+                  onPress={() => startEdittingTask(item)}
                 >
-                  {item.title}
-                </Text>
-              </TouchableOpacity>
-            </View>
+                  <Icon name="edit-3" size={20} color="#B8B8B8" />
+                </TouchableOpacity>
 
-            <TouchableOpacity
-              testID={`trash-${index}`}
-              style={{ paddingHorizontal: 24 }}
-              //TODO - use onPress (remove task) prop
-              onPress={() => removeTask(item.id)}
-            >
-              <Image source={trashIcon} />
-            </TouchableOpacity>
+                <TouchableOpacity
+                  testID={`trash-${index}`}
+                  style={{ paddingRight: 24 }}
+                  onPress={() => removeTask(item.id)}
+                >
+                  <Image source={trashIcon} />
+                </TouchableOpacity>
+              </>
+            ) : (
+              <View style={styles.inputWrapper}>
+                <TextInput
+                  ref={inputRef}
+                  value={editedTask}
+                  style={styles.input}
+                  onChangeText={setEditedTask}
+                  returnKeyType="done"
+                  onSubmitEditing={() => doneEdittingTask()}
+                />
+                <TouchableOpacity
+                  style={{ paddingHorizontal: 24 }}
+                  onPress={() => cancelEdditingTask(item.id)}
+                >
+                  <Icon name="x" size={22} color="#B8B8B8" />
+                </TouchableOpacity>
+              </View>
+            )}
           </ItemWrapper>
         );
       }}
@@ -120,5 +186,17 @@ const styles = StyleSheet.create({
     color: '#1DB863',
     textDecorationLine: 'line-through',
     fontFamily: 'Inter-Medium',
+  },
+  inputWrapper: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  input: {
+    fontFamily: 'Inter-Medium',
+    paddingHorizontal: 24,
+    height: 51,
+    width: '70%',
+    color: '#666',
   },
 });

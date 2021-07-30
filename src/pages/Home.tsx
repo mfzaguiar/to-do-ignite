@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 
 import { Header } from '../components/Header';
 import { Task, TasksList } from '../components/TasksList';
@@ -8,13 +8,27 @@ import { TodoInput } from '../components/TodoInput';
 export function Home() {
   const [tasks, setTasks] = useState<Task[]>([]);
 
+  function hasEqualTask(newTask: string) {
+    return tasks.some((task) => task.title === newTask);
+  }
+
   function handleAddTask(newTaskTitle: string) {
     //TODO - add new task
     const newTask = {
       id: new Date().getTime(),
       title: newTaskTitle,
+      edit: false,
       done: false,
     };
+
+    if (hasEqualTask(newTaskTitle)) {
+      Alert.alert(
+        'Task já cadastrada',
+        'Você não pode cadastrar task com o mesmo nome',
+        [{ text: 'OK', onPress: () => console.log('OK Pressed') }]
+      );
+      return;
+    }
 
     setTasks((oldState) => [...oldState, newTask]);
   }
@@ -32,7 +46,29 @@ export function Home() {
 
   function handleRemoveTask(id: number) {
     //TODO - remove task from state
-    setTasks((olsState) => olsState.filter((task) => task.id !== id));
+    Alert.alert('Remover Task', 'Deseja realmente remover Task?', [
+      {
+        text: 'Confirmar',
+        onPress: () => {
+          setTasks((olsState) => olsState.filter((task) => task.id !== id));
+        },
+      },
+      {
+        text: 'Cancelar',
+        onPress: () => console.log('Cancelar'),
+        style: 'cancel',
+      },
+    ]);
+  }
+
+  function handleEditTask(id: number) {
+    setTasks((oldState) =>
+      oldState.map((task) => {
+        if (task.id === id) {
+          return { ...task, edit: !task.edit };
+        } else return task;
+      })
+    );
   }
 
   return (
@@ -43,8 +79,10 @@ export function Home() {
 
       <TasksList
         tasks={tasks}
+        setTasks={setTasks}
         toggleTaskDone={handleToggleTaskDone}
         removeTask={handleRemoveTask}
+        editTask={handleEditTask}
       />
     </View>
   );
